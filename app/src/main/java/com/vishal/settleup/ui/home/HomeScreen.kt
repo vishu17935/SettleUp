@@ -24,12 +24,14 @@ fun HomeScreen() {
     var showAddExpense by remember { mutableStateOf(false) }
 
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddExpense = true }) {
                 Text("+")
             }
         }
-    ) { paddingValues ->
+    )
+    { paddingValues ->
 
         Column(
             modifier = Modifier
@@ -56,13 +58,18 @@ fun HomeScreen() {
             Text(text = "Expenses")
             Spacer(modifier = Modifier.height(8.dp))
 
-            LazyColumn {
-                items(expenses, key = { it.id }) { expense ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)   // 🔥 THIS IS THE KEY
+            ) {
+
+            items(expenses, key = { it.id }) { expense ->
                     ExpenseRow(
                         expense = expense,
                         onDelete = { expenseId -> vm.deleteExpense(expenseId) }
                     )
-                    Divider()
+
                 }
             }
 

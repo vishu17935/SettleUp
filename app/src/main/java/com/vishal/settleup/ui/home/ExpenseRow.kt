@@ -31,6 +31,7 @@ fun ExpenseRow(
     )
 
     SwipeToDismissBox(
+        modifier = Modifier.fillMaxWidth(),
         state = dismissState,
         backgroundContent = {
             Box(
@@ -48,10 +49,16 @@ fun ExpenseRow(
             }
         },
         content = {
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(16.dp)
+            ) {
                 Text(text = expense.note.ifBlank { "Expense" })
                 Text(text = "${expense.amount.toCurrency()} • Paid by ${expense.payerId}")
             }
         }
     )
+
 }
