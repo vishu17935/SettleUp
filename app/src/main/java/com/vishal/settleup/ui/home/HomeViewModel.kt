@@ -1,12 +1,16 @@
 package com.vishal.settleup.ui.home
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.vishal.settleup.data.models.Balance
 import com.vishal.settleup.data.models.Expense
+import com.vishal.settleup.data.models.Settlement
 import com.vishal.settleup.data.repository.ExpenseRepository
 import com.vishal.settleup.domain.balance.BalanceCalculator
+import com.vishal.settleup.domain.settlement.SettlementCalculator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val repository: ExpenseRepository = ExpenseRepository()
@@ -18,6 +22,9 @@ class HomeViewModel(
     private val _balances = MutableStateFlow<Map<String, Balance>>(emptyMap())
     val balances: StateFlow<Map<String, Balance>> = _balances
 
+    private val _settlements = MutableStateFlow<List<Settlement>>(emptyList())
+    val settlements: StateFlow<List<Settlement>> = _settlements
+
     init {
         observeExpenses()
     }
@@ -26,11 +33,26 @@ class HomeViewModel(
         repository.observeExpenses(
             onSuccess = { expenseList ->
                 _expenses.value = expenseList
-                _balances.value = BalanceCalculator.calculateBalances(expenseList)
+
+                val balanceMap = BalanceCalculator.calculateBalances(expenseList)
+                _balances.value = balanceMap
+
+                _settlements.value =
+                    SettlementCalculator.calculateSettlements(balanceMap)
             },
             onError = {
-                // TODO: handle error state later
+                // TODO: error handling later
             }
         )
+    }
+
+    fun deleteExpense(expenseId: String) {
+        repository.deleteExpense(expenseId)
+    }
+
+    fun addExpense(expense: Expense) {
+        viewModelScope.launch {
+            repository.addExpense(expense)
+        }
     }
 }
