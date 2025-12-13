@@ -22,16 +22,16 @@ fun HomeScreen() {
     val balances by vm.balances.collectAsState()
     val expenses by vm.expenses.collectAsState()
     val settlements by vm.settlements.collectAsState()
+    val groupMembers by vm.groupMembers.collectAsState() // ✅ NEW
 
     var showAddExpense by remember { mutableStateOf(false) }
 
     fun displayName(userId: String): String {
-        return if (userId == user.id) user.name else userId
+        return groupMembers[userId] ?: userId
     }
 
-    // TEMP until groups: members derived from balances
-    val members = remember(balances) {
-        balances.keys.toList()
+    val members = remember(groupMembers) {
+        groupMembers.keys.toList()
     }
 
     Scaffold(
@@ -102,7 +102,7 @@ fun HomeScreen() {
 
     if (showAddExpense) {
         AddExpenseSheet(
-            members = members,        // ✅ NEW
+            members = members,               // ✅ REAL group members
             onDismiss = { showAddExpense = false },
             onAddExpense = { expense ->
                 vm.addExpense(expense)

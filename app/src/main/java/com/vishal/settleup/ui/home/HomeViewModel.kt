@@ -6,6 +6,7 @@ import com.vishal.settleup.data.models.Balance
 import com.vishal.settleup.data.models.Expense
 import com.vishal.settleup.data.models.Settlement
 import com.vishal.settleup.data.repository.ExpenseRepository
+import com.vishal.settleup.data.repository.GroupRepository // 🆕
 import com.vishal.settleup.domain.balance.BalanceCalculator
 import com.vishal.settleup.domain.settlement.SettlementCalculator
 import com.vishal.settleup.domain.session.CurrentUserManager
@@ -14,7 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
-    private val repository: ExpenseRepository = ExpenseRepository()
+    private val expenseRepository: ExpenseRepository = ExpenseRepository(),
+    private val groupRepository: GroupRepository = GroupRepository() // 🆕
 ) : ViewModel() {
 
     private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
@@ -26,12 +28,36 @@ class HomeViewModel(
     private val _settlements = MutableStateFlow<List<Settlement>>(emptyList())
     val settlements: StateFlow<List<Settlement>> = _settlements
 
+    // 🆕 Group members (userId -> displayName)
+    private val _groupMembers = MutableStateFlow<Map<String, String>>(emptyMap())
+    val groupMembers: StateFlow<Map<String, String>> = _groupMembers
+
+    // ✅ resolve groupId ONCE
+    private val groupId: String? = CurrentUserManager.getGroupIdOrNull()
+
     init {
-        observeExpenses()
+        if (groupId != null) {
+            observeGroup(groupId)      // 🆕
+            observeExpenses(groupId)
+        }
     }
 
-    private fun observeExpenses() {
-        repository.observeExpenses(
+    // 🆕 Observe group info
+    private fun observeGroup(groupId: String) {
+        groupRepository.observeGroup(
+            groupId = groupId,
+            onSuccess = { group ->
+                _groupMembers.value = group.members
+            },
+            onError = {
+                // TODO: handle later
+            }
+        )
+    }
+
+    private fun observeExpenses(groupId: String) {
+        expenseRepository.observeExpenses(
+            groupId = groupId,
             onSuccess = { expenseList ->
                 _expenses.value = expenseList
 
@@ -48,11 +74,12 @@ class HomeViewModel(
     }
 
     fun deleteExpense(expenseId: String) {
-        repository.deleteExpense(expenseId)
+        val gid = groupId ?: return
+        expenseRepository.deleteExpense(gid, expenseId)
     }
 
     fun addExpense(expense: Expense) {
-        // ✅ SINGLE source of truth
+        val gid = groupId ?: return
         val user = CurrentUserManager.getUserOrNull() ?: return
 
         val enrichedExpense = expense.copy(
@@ -61,7 +88,7 @@ class HomeViewModel(
         )
 
         viewModelScope.launch {
-            repository.addExpense(enrichedExpense)
+            expenseRepository.addExpense(gid, enrichedExpense)
         }
     }
 }
