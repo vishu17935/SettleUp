@@ -8,6 +8,7 @@ import com.vishal.settleup.data.models.Settlement
 import com.vishal.settleup.data.repository.ExpenseRepository
 import com.vishal.settleup.domain.balance.BalanceCalculator
 import com.vishal.settleup.domain.settlement.SettlementCalculator
+import com.vishal.settleup.domain.session.CurrentUserManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -51,8 +52,16 @@ class HomeViewModel(
     }
 
     fun addExpense(expense: Expense) {
+        // ✅ SINGLE source of truth
+        val user = CurrentUserManager.getUserOrNull() ?: return
+
+        val enrichedExpense = expense.copy(
+            createdByUserId = user.id,
+            createdAt = System.currentTimeMillis()
+        )
+
         viewModelScope.launch {
-            repository.addExpense(expense)
+            repository.addExpense(enrichedExpense)
         }
     }
 }

@@ -8,5 +8,7 @@ data class Expense(
     val participants: Map<String, Participant> = emptyMap(),
     val splitType: SplitType = SplitType.EQUAL,
     val note: String = "",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val createdByUserId: String = "",
+    val createdAt: Long = 0L
 )
