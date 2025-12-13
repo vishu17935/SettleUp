@@ -33,10 +33,21 @@ class ExpenseRepository {
         FirebaseRefs.expensesRootRef.child(groupId).child(id).setValue(expense.copy(id = id))
     }
 
-    fun deleteExpense(groupId: String, expenseId: String) {
+    fun softDeleteExpense(
+        groupId: String,
+        expenseId: String,
+        deletedByUserId: String
+    ) {
+        val updates = mapOf(
+            "isDeleted" to true,
+            "deletedAt" to System.currentTimeMillis(),
+            "deletedByUserId" to deletedByUserId
+        )
+
         FirebaseRefs.expensesRootRef
             .child(groupId)
             .child(expenseId)
-            .removeValue()
+            .updateChildren(updates)
     }
+
 }

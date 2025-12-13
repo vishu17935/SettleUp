@@ -5,8 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.vishal.settleup.data.models.Balance
 import com.vishal.settleup.data.models.Expense
 import com.vishal.settleup.data.models.Settlement
+import com.vishal.settleup.data.models.Group
 import com.vishal.settleup.data.repository.ExpenseRepository
-import com.vishal.settleup.data.repository.GroupRepository // 🆕
+import com.vishal.settleup.data.repository.GroupRepository
 import com.vishal.settleup.domain.balance.BalanceCalculator
 import com.vishal.settleup.domain.settlement.SettlementCalculator
 import com.vishal.settleup.domain.session.CurrentUserManager
@@ -16,7 +17,7 @@ import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val expenseRepository: ExpenseRepository = ExpenseRepository(),
-    private val groupRepository: GroupRepository = GroupRepository() // 🆕
+    private val groupRepository: GroupRepository = GroupRepository()
 ) : ViewModel() {
 
     private val _expenses = MutableStateFlow<List<Expense>>(emptyList())
@@ -28,25 +29,26 @@ class HomeViewModel(
     private val _settlements = MutableStateFlow<List<Settlement>>(emptyList())
     val settlements: StateFlow<List<Settlement>> = _settlements
 
-    // 🆕 Group members (userId -> displayName)
     private val _groupMembers = MutableStateFlow<Map<String, String>>(emptyMap())
     val groupMembers: StateFlow<Map<String, String>> = _groupMembers
 
-    // ✅ resolve groupId ONCE
+    private val _group = MutableStateFlow<Group?>(null)
+    val group: StateFlow<Group?> = _group
+
     private val groupId: String? = CurrentUserManager.getGroupIdOrNull()
 
     init {
         if (groupId != null) {
-            observeGroup(groupId)      // 🆕
+            observeGroup(groupId)
             observeExpenses(groupId)
         }
     }
 
-    // 🆕 Observe group info
     private fun observeGroup(groupId: String) {
         groupRepository.observeGroup(
             groupId = groupId,
             onSuccess = { group ->
+                _group.value = group
                 _groupMembers.value = group.members
             },
             onError = {
@@ -73,9 +75,16 @@ class HomeViewModel(
         )
     }
 
+    // 🔥 Soft delete wired
     fun deleteExpense(expenseId: String) {
         val gid = groupId ?: return
-        expenseRepository.deleteExpense(gid, expenseId)
+        val user = CurrentUserManager.getUserOrNull() ?: return
+
+        expenseRepository.softDeleteExpense(
+            groupId = gid,
+            expenseId = expenseId,
+            deletedByUserId = user.id
+        )
     }
 
     fun addExpense(expense: Expense) {

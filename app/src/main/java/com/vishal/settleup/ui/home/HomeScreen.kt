@@ -11,6 +11,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vishal.settleup.ui.common.rememberCurrentUser
 import com.vishal.settleup.utils.toCurrency
+import androidx.compose.foundation.lazy.LazyRow
+import com.vishal.settleup.ui.home.SettlementChip
+import com.vishal.settleup.ui.home.GroupHeader
+
+
+
 
 @Composable
 fun HomeScreen() {
@@ -23,6 +29,7 @@ fun HomeScreen() {
     val expenses by vm.expenses.collectAsState()
     val settlements by vm.settlements.collectAsState()
     val groupMembers by vm.groupMembers.collectAsState() // ✅ NEW
+    val group by vm.group.collectAsState()
 
     var showAddExpense by remember { mutableStateOf(false) }
 
@@ -48,20 +55,31 @@ fun HomeScreen() {
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
+            group?.let {
+                GroupHeader(
+                    groupName = it.name,
+                    joinCode = it.joinCode
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             // 🔹 Balances
             Text(text = "Balances")
             Spacer(modifier = Modifier.height(8.dp))
 
-            balances.forEach { (userId, balance) ->
-                val color =
-                    if (balance.netBalance >= 0) Color(0xFF2E7D32)
-                    else Color(0xFFC62828)
-
-                Text(
-                    text = "${displayName(userId)} : ${balance.netBalance.toCurrency()}",
-                    color = color
-                )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                balances.forEach { (userId, balance) ->
+                    item {
+                        BalanceCard(
+                            name = displayName(userId),
+                            amount = balance.netBalance
+                        )
+                    }
+                }
             }
+
 
             Spacer(modifier = Modifier.height(24.dp))
             Divider()
@@ -91,12 +109,24 @@ fun HomeScreen() {
             Spacer(modifier = Modifier.height(16.dp))
 
             // 🔹 Settlements
+            // 🔹 Settlements
             Text(text = "Settle Up")
-            settlements.forEach {
-                Text(
-                    text = "${displayName(it.fromUserId)} → ${displayName(it.toUserId)} ${it.amount.toCurrency()}"
-                )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                settlements.forEach { settlement ->
+                    item {
+                        SettlementChip(
+                            fromName = displayName(settlement.fromUserId),
+                            toName = displayName(settlement.toUserId),
+                            amount = settlement.amount
+                        )
+                    }
+                }
             }
+
         }
     }
 

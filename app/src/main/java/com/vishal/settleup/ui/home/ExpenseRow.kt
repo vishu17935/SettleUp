@@ -10,6 +10,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.vishal.settleup.data.models.Expense
 import com.vishal.settleup.domain.session.CurrentUserManager
@@ -23,16 +24,13 @@ fun ExpenseRow(
     expense: Expense,
     onDelete: (String) -> Unit
 ) {
-    // ✅ Collect current user safely
     val currentUserId by CurrentUserManager.userId.collectAsState()
     val currentUserName by CurrentUserManager.displayName.collectAsState()
 
-    // Guard: user not loaded yet
-    if (currentUserId == null || currentUserName == null) {
-        return
-    }
+    if (currentUserId == null || currentUserName == null) return
 
-    val canDelete = expense.createdByUserId == currentUserId
+    val canDelete =
+        !expense.isDeleted && expense.createdByUserId == currentUserId
 
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
@@ -87,13 +85,14 @@ private fun ExpenseContent(
     currentUserId: String,
     currentUserName: String
 ) {
-    fun displayName(userId: String): String {
-        return if (userId == currentUserId) {
-            currentUserName
-        } else {
-            userId
-        }
+    fun displayName(userId: String?): String {
+        if (userId == null) return "Unknown"
+        return if (userId == currentUserId) currentUserName else userId
     }
+
+    val fadedColor = if (expense.isDeleted) Color.Gray else Color.Unspecified
+    val textDecoration =
+        if (expense.isDeleted) TextDecoration.LineThrough else null
 
     Column(
         modifier = Modifier
@@ -103,14 +102,18 @@ private fun ExpenseContent(
     ) {
         Text(
             text = expense.note.ifBlank { "Expense" },
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = fadedColor,
+            textDecoration = textDecoration
         )
 
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
             text = "${expense.amount.toCurrency()} • Paid by ${displayName(expense.payerId)}",
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
+            color = fadedColor,
+            textDecoration = textDecoration
         )
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -120,6 +123,15 @@ private fun ExpenseContent(
             style = MaterialTheme.typography.bodySmall,
             color = Color.Gray
         )
+
+        if (expense.isDeleted) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Deleted by ${displayName(expense.deletedByUserId)} · ${expense.deletedAt?.toTimeString()}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+        }
     }
 }
 

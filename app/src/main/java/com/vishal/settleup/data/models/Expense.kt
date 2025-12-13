@@ -8,7 +8,13 @@ data class Expense(
     val participants: Map<String, Participant> = emptyMap(),
     val splitType: SplitType = SplitType.EQUAL,
     val note: String = "",
-    val timestamp: Long = System.currentTimeMillis(),
+
+    // creation metadata
     val createdByUserId: String = "",
-    val createdAt: Long = 0L
+    val createdAt: Long = 0L,
+
+    // 🔥 Soft delete fields (NEW)
+    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null,
+    val deletedByUserId: String? = null
 )

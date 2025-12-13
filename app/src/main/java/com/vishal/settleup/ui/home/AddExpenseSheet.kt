@@ -1,5 +1,6 @@
 package com.vishal.settleup.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -10,17 +11,19 @@ import com.vishal.settleup.data.models.Expense
 import com.vishal.settleup.data.models.Participant
 import com.vishal.settleup.data.models.SplitType
 import com.vishal.settleup.ui.common.rememberCurrentUser
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpenseSheet(
-    members: List<String>,          // 👈 group members injected
+    members: List<String>,
     onDismiss: () -> Unit,
     onAddExpense: (Expense) -> Unit
 ) {
     val user = rememberCurrentUser() ?: return
 
-    // 🔒 No members = no expense
     if (members.isEmpty()) {
         ModalBottomSheet(onDismissRequest = onDismiss) {
             Text(
@@ -37,11 +40,22 @@ fun AddExpenseSheet(
     var amount by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
 
-    var payerId by remember { mutableStateOf(user.id) }
+    var payerId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(members) {
+        if (payerId == null || payerId !in members) {
+            payerId = when {
+                user.id in members -> user.id
+                members.isNotEmpty() -> members.first()
+                else -> null
+            }
+        }
+    }
 
     var selectedParticipants by remember {
         mutableStateOf(members.associateWith { true })
     }
+
+    var payerExpanded by remember { mutableStateOf(false) }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -52,6 +66,7 @@ fun AddExpenseSheet(
             Text("Add Expense", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(16.dp))
 
+            // 🔹 Amount
             OutlinedTextField(
                 value = amount,
                 onValueChange = { amount = it },
@@ -62,6 +77,7 @@ fun AddExpenseSheet(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // 🔹 Note
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it },
@@ -71,27 +87,28 @@ fun AddExpenseSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // 🔹 Payer (STABLE DROPDOWN)
             Text("Paid by")
             Spacer(modifier = Modifier.height(8.dp))
 
-            var payerExpanded by remember { mutableStateOf(false) }
-
-            ExposedDropdownMenuBox(
-                expanded = payerExpanded,
-                onExpandedChange = { payerExpanded = !payerExpanded }
-            ) {
+            Box {
                 OutlinedTextField(
-                    value = displayName(payerId),
+                    value = payerId?.let { displayName(it) } ?: "",
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Payer") },
                     trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = payerExpanded)
+                        IconButton(onClick = { payerExpanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Select payer"
+                            )
+                        }
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                ExposedDropdownMenu(
+                DropdownMenu(
                     expanded = payerExpanded,
                     onDismissRequest = { payerExpanded = false }
                 ) {
@@ -107,8 +124,10 @@ fun AddExpenseSheet(
                 }
             }
 
+
             Spacer(modifier = Modifier.height(16.dp))
 
+            // 🔹 Split between
             Text("Split between")
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -133,6 +152,7 @@ fun AddExpenseSheet(
                 onClick = {
                     val amt = amount.toDoubleOrNull() ?: return@Button
                     val participants = selectedParticipants.filterValues { it }.keys
+                    val payer = payerId ?: return@Button
                     if (amt <= 0 || participants.isEmpty()) return@Button
 
                     val splitAmount = amt / participants.size
@@ -148,7 +168,7 @@ fun AddExpenseSheet(
 
                     val expense = Expense(
                         amount = amt,
-                        payerId = payerId,
+                        payerId = payer,
                         note = note,
                         splitType = SplitType.EQUAL,
                         participants = participantMap
